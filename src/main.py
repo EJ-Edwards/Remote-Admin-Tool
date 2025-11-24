@@ -1,7 +1,6 @@
 import os
 import textwrap
 
-# Import your server + client modules
 from server import start_server
 from client import start_client
 
@@ -74,11 +73,11 @@ def main():
 
     if mode == 1:
         print("Starting server...")
-        start_server()   # ← actually runs the server code
+        start_server()   
 
     elif mode == 2:
         print("Starting client...")
-        start_client()   # ← actually runs the client code
+        start_client()   
 
 if __name__ == "__main__":
     main()
