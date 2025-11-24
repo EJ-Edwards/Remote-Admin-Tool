@@ -1,16 +1,32 @@
 import os
 import textwrap
 
+# Import your server + client modules
+from server import start_server
+from client import start_client
+
 TERMS = """
 Sentinel Link — Terms of Service
 --------------------------------
-1. You agree to use this software responsibly and lawfully.
-2. You understand that no guarantees of uptime or data retention are provided.
-3. You accept that misuse or unauthorized access attempts may result in termination.
-4. You acknowledge that logs may be stored for security and debugging purposes.
-5. You accept all risks associated with the use of this software.
 
-Please read carefully before continuing.
+By using Sentinel Link, you agree to the following terms:
+
+1. You will NOT use Sentinel Link for any illegal, harmful, or unethical activity.
+2. You will NOT use Sentinel Link to spy on individuals, monitor anyone without their
+   explicit consent, or engage in any type of unauthorized surveillance.
+3. You will NOT modify, alter, fork, or repurpose this code for the purpose of spying,
+   surveillance, stalking, harassment, or gaining unauthorized access to systems,
+   devices, networks, or data.
+4. You will NOT use this software to access or interact with any system or device that
+   you do not own or have explicit authorization to use.
+5. You understand that misuse of this software may violate local, state, federal, or
+   international laws. You accept full legal responsibility for your actions.
+6. You acknowledge that the developers of Sentinel Link are not liable for any damages,
+   legal consequences, or losses resulting from improper or unlawful use.
+7. You agree to use this software strictly for legitimate, authorized, and ethical
+   purposes only.
+
+Please read these terms carefully before continuing.
 """
 
 def clear_screen():
@@ -21,7 +37,6 @@ def show_terms():
     print("\n" + textwrap.dedent(TERMS).strip() + "\n")
 
 def accept_terms() -> bool:
-    """Ask user to accept ToS. Returns True/False."""
     show_terms()
 
     while True:
@@ -30,17 +45,13 @@ def accept_terms() -> bool:
         if accept in ("y", "yes"):
             print("\nThank you. You may now use Sentinel Link.\n")
             return True
-        
         elif accept in ("n", "no"):
             print("\nYou must accept the Terms and Conditions to use Sentinel Link.\n")
             return False
-        
         else:
             print("Invalid input. Please type 'y' or 'n'.\n")
 
 def mode_menu() -> int:
-    """Show server/client selection. Returns 1 or 2."""
-
     print("Select mode:")
     print("1) Run as Server")
     print("2) Run as Client\n")
@@ -63,15 +74,11 @@ def main():
 
     if mode == 1:
         print("Starting server...")
-        # import server and run it
-        # from server import start_server
-        # start_server()
+        start_server()   # ← actually runs the server code
 
     elif mode == 2:
         print("Starting client...")
-        # import client and run it
-        # from client import start_client
-        # start_client()
+        start_client()   # ← actually runs the client code
 
 if __name__ == "__main__":
     main()
