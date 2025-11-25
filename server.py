@@ -1,6 +1,13 @@
 import socket
 import threading
 import ctypes
+import random 
+import string
+
+def generate_password(length = 20):
+    chars = string.ascii_letters + string.digits + "!@#$%^&*()_+=-{}[];:<>,.?/"
+    return "".join(random.sample(chars, length))
+
 
 clients = {}  
 clientscmds = {
@@ -9,11 +16,15 @@ clientscmds = {
     "hostname": "Get machine hostname",
     "ls": "List directory contents",
     "cd": "Change directory",
+    "pwd": "Show current directory",
     "read_file": "Read file contents",
     "write_file": "Write to a file",
     "delete_file": "Delete a file",
     "mkdir": "Create a directory",
-
+    "disk_usage": "Show disk usage",
+    "whoami": "Return current username",
+    "uptime": "Return system uptime",
+    "shutdown": "Shut down the client program or perform a safe system shutdown (only on machines you own)"
 }
 
 
