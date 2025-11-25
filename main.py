@@ -8,7 +8,25 @@ from client import start_client
 TERMS = """
 Sentinel Link — Terms of Service
 --------------------------------
-(terms unchanged)
+
+By using Sentinel Link, you agree to the following terms:
+
+1. You will NOT use Sentinel Link for any illegal, harmful, or unethical activity.
+2. You will NOT use Sentinel Link to spy on individuals, monitor anyone without their
+   explicit consent, or engage in any type of unauthorized surveillance.
+3. You will NOT modify, alter, fork, or repurpose this code for the purpose of spying,
+   surveillance, stalking, harassment, or gaining unauthorized access to systems,
+   devices, networks, or data.
+4. You will NOT use this software to access or interact with any system or device that
+   you do not own or have explicit authorization to use.
+5. You understand that misuse of this software may violate local, state, federal, or
+   international laws. You accept full legal responsibility for your actions.
+6. You acknowledge that the developers of Sentinel Link are not liable for any damages,
+   legal consequences, or losses resulting from improper or unlawful use.
+7. You agree to use this software strictly for legitimate, authorized, and ethical
+   purposes only.
+
+Please read these terms carefully before continuing.
 """
 
 def clear_screen():
