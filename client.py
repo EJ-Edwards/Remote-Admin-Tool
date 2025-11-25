@@ -9,6 +9,7 @@ def handle_command(command):
     command = command.strip()
 
     try:
+        # Built-in commands
         if command == "whoami":
             return getpass.getuser()
 
@@ -16,7 +17,10 @@ def handle_command(command):
             return platform.node()
 
         elif command == "sysinfo":
-            return f"OS: {platform.system()} {platform.release()}\nProcessor: {platform.processor()}"
+            return (
+                f"OS: {platform.system()} {platform.release()}\n"
+                f"Processor: {platform.processor()}"
+            )
 
         elif command == "list_processes":
             return subprocess.getoutput("tasklist" if os.name == "nt" else "ps -e")
@@ -27,45 +31,73 @@ def handle_command(command):
         elif command == "pwd":
             return os.getcwd()
 
+        # Change directory
         elif command.startswith("cd "):
             path = command[3:].strip()
-            os.chdir(path)
-            return f"Changed directory to {os.getcwd()}"
+            try:
+                os.chdir(path)
+                return f"Changed directory to {os.getcwd()}"
+            except Exception as e:
+                return f"Error changing directory: {e}"
 
+        # Read file
         elif command.startswith("read_file "):
             path = command[10:].strip()
-            with open(path, "r") as f:
-                return f.read()
+            try:
+                with open(path, "r", errors="ignore") as f:
+                    return f.read()
+            except Exception as e:
+                return f"Error reading file: {e}"
 
+        # Write file
         elif command.startswith("write_file "):
-            _, path, content = command.split(" ", 2)
-            with open(path, "w") as f:
-                f.write(content)
-            return f"Wrote to {path}"
+            try:
+                _, path, content = command.split(" ", 2)
+                with open(path, "w") as f:
+                    f.write(content)
+                return f"Wrote to {path}"
+            except Exception as e:
+                return f"Error writing file: {e}"
 
+        # Delete file
         elif command.startswith("delete_file "):
             path = command[12:].strip()
-            os.remove(path)
-            return f"Deleted {path}"
+            try:
+                os.remove(path)
+                return f"Deleted {path}"
+            except Exception as e:
+                return f"Error deleting file: {e}"
 
+        # Make directory
         elif command.startswith("mkdir "):
-            path = command[6:].strip()
-            os.mkdir(path)
-            return f"Created {path}"
+            try:
+                path = command[6:].strip()
+                os.mkdir(path)
+                return f"Created folder: {path}"
+            except Exception as e:
+                return f"Error creating folder: {e}"
 
         elif command == "disk_usage":
-            usage = os.statvfs(os.getcwd())
-            total = usage.f_blocks * usage.f_frsize
-            free = usage.f_bfree * usage.f_frsize
-            used = total - free
-            return f"Total: {total // (1024**3)} GB\nUsed: {used // (1024**3)} GB\nFree: {free // (1024**3)} GB"
+            try:
+                usage = os.statvfs(os.getcwd())
+                total = usage.f_blocks * usage.f_frsize
+                free = usage.f_bfree * usage.f_frsize
+                used = total - free
+                return (
+                    f"Total: {total // (1024**3)} GB\n"
+                    f"Used:  {used // (1024**3)} GB\n"
+                    f"Free:  {free // (1024**3)} GB"
+                )
+            except:
+                return "Disk usage not supported on this OS."
 
         elif command == "uptime":
-            return subprocess.getoutput("systeminfo | find \"System Boot Time\"" if os.name == "nt" else "uptime -p")
+            if os.name == "nt":
+                return subprocess.getoutput("net stats workstation")
+            else:
+                return subprocess.getoutput("uptime -p")
 
-        elif command == "shutdown":
-            return "[!] Shutdown disabled for demo"
-
+        # Everything else → Shell command
         else:
             return subprocess.getoutput(command)
 
@@ -75,37 +107,46 @@ def handle_command(command):
 
 def start_client(server_ip, server_port):
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
     try:
         client.connect((server_ip, server_port))
+        print("[+] Connected to server.")
     except:
-        print("[!] Could not connect to server.")
+        print("[!] Could not connect.")
         return
 
-    auth_msg = client.recv(1024).decode()
-    if auth_msg != "AUTH_REQ":
-        print("[!] Invalid authentication handshake.")
-        client.close()
+    # AUTH HANDSHAKE
+    msg = client.recv(1024).decode()
+    if msg != "AUTH_REQ":
+        print("[!] Unexpected server handshake.")
         return
 
     pin = input("Enter PIN: ").strip()
     client.send(pin.encode())
 
-    if client.recv(1024).decode() != "AUTH_OK":
-        print("[!] Authentication failed.")
+    auth_reply = client.recv(1024).decode()
+    if auth_reply != "AUTH_OK":
+        print("[!] Auth failed.")
         client.close()
         return
 
-    print("[+] Authenticated.\nListening for commands...\n")
+    print("[+] Authenticated successfully.\nWaiting for commands...\n")
 
+    # COMMAND LOOP
     while True:
         try:
             data = client.recv(4096)
             if not data:
                 break
-            command = data.decode()
+
+            command = data.decode(errors="ignore").strip()
             output = handle_command(command)
-            client.send(output.encode())
-        except:
+
+            # Send output with newline so server web UI displays correctly
+            client.send((output + "\n").encode(errors="ignore"))
+
+        except Exception as e:
+            print("[!] Error:", e)
             break
 
     print("[-] Disconnected.")
