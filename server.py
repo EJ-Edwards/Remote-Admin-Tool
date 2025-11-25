@@ -8,6 +8,9 @@ def generate_password(length = 20):
     chars = string.ascii_letters + string.digits + "!@#$%^&*()_+=-{}[];:<>,.?/"
     return "".join(random.sample(chars, length))
 
+PIN = generate_password()
+print(f"Generated PIN: {PIN}")
+
 
 clients = {}  
 clientscmds = {
