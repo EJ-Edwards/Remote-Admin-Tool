@@ -4,14 +4,14 @@ import random
 import string
 import sys
 import time
+import ctypes
+from flask import Flask, request, jsonify, render_template_string
 
-try:
-    import ctypes
-except ImportError:
-    ctypes = None
 
-# Allowed portfolio commands
-clientscmds = {
+clients = {}
+PIN = None
+
+client_commands = {
     "sysinfo": "Get OS and processor info",
     "list_processes": "List running processes",
     "hostname": "Get machine hostname",
@@ -23,33 +23,95 @@ clientscmds = {
     "uptime": "Show system uptime",
 }
 
-clients = {}
-PIN = None
 
-def logo():
-    print(r"""
-  ____             _   _            _ _     _       _    
- / ___|  ___ _ __ | |_(_)_ __   ___| | |   (_)_ __ | | __
- \___ \ / _ \ '_ \| __| | '_ \ / _ \ | |   | | '_ \| |/ / 
-  ___) |  __/ | | | |_| | | | |  __/ | |___| | | | |   <  
- |____/ \___|_| |_|\__|_|_| |_|\___|_|_____|_|_| |_|_|\_\
-    """)
+dashboard_html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sentinel Link Dashboard</title>
+    <style>
+        body { background: #111; color: white; font-family: Arial; padding: 20px; }
+        .client { margin: 10px 0; padding: 10px; background: #222; border-radius: 5px; }
+        input, button { padding: 8px; margin-top: 5px; }
+        button { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Connected Clients</h1>
+    <div id="clients"></div>
+
+    <script>
+        async function loadClients() {
+            let res = await fetch("/api/clients");
+            let data = await res.json();
+            let div = document.getElementById("clients");
+
+            div.innerHTML = "";
+            for (let c of data.clients) {
+                div.innerHTML += `
+                    <div class="client">
+                        <strong>${c}</strong><br>
+                        <input id="cmd-${c}" placeholder="Enter command">
+                        <button onclick="sendCmd('${c}')">Send</button>
+                    </div>
+                `;
+            }
+        }
+
+        async function sendCmd(addr) {
+            let val = document.getElementById("cmd-" + addr).value;
+            await fetch("/api/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ addr, command: val })
+            });
+        }
+
+        setInterval(loadClients, 1000);
+    </script>
+</body>
+</html>
+"""
+
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return dashboard_html
+
+@app.route("/api/clients")
+def api_clients():
+    return jsonify({"clients": [f"{ip}:{port}" for (ip, port) in clients.keys()]})
+
+@app.route("/api/send", methods=["POST"])
+def api_send():
+    data = request.json
+    addr = data["addr"]
+    command = data["command"]
+
+    for (ip, port), sock in clients.items():
+        if f"{ip}:{port}" == addr:
+            try:
+                sock.send(command.encode())
+                return jsonify({"status": "sent"})
+            except:
+                return jsonify({"status": "error"})
+
+    return jsonify({"status": "client_not_found"})
 
 def set_console_title(title: str):
-    if ctypes:
-        try:
-            ctypes.windll.kernel32.SetConsoleTitleW(title)
-        except:
-            pass
-    else:
+    try:
+        ctypes.windll.kernel32.SetConsoleTitleW(title)
+    except:
         sys.stdout.write(f"\x1b]0;{title}\x07")
 
 def generate_pin(length=8):
     chars = string.ascii_letters + string.digits
     return "".join(random.choice(chars) for _ in range(length))
 
+
 def authenticate_client(sock):
-    """Authenticate client using shared PIN."""
     sock.send(b"AUTH_REQ")
     received = sock.recv(1024).decode().strip()
     if received != PIN:
@@ -73,8 +135,8 @@ def handle_client(sock, addr):
             data = sock.recv(4096)
             if not data:
                 break
-            output = data.decode(errors="ignore")
-            print(f"[{addr}] Output:\n{output}\n")
+
+            print(f"[{addr}] Output:\n{data.decode(errors='ignore')}\n")
         except:
             break
 
@@ -83,34 +145,22 @@ def handle_client(sock, addr):
     sock.close()
     set_console_title(f"Clients Connected: {len(clients)}")
 
-def command_sender():
-    """Send commands to clients and handle input safely."""
-    while True:
-        if not clients:
-            time.sleep(0.1)
-            continue
 
-        cmd = input("CMD> ").strip()
-        if not cmd:
-            continue
 
-        if cmd not in clientscmds:
-            print(f"[!] Invalid command. Available: {list(clientscmds.keys())}")
-            continue
+def start_web_dashboard():
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
 
-        for addr, sock in list(clients.items()):
-            try:
-                sock.send(cmd.encode())
-            except:
-                print(f"[!] Failed to send command to {addr}")
+
 
 def start_server():
     global PIN
     PIN = generate_pin()
-    print(f"[+] Your support PIN: {PIN}\nGive this PIN to the person you're helping.\n")
-    
-    logo()
-    
+
+    print(f"[+] Support PIN: {PIN}")
+    print("[+] Web Dashboard: http://localhost:5000\n")
+
+    threading.Thread(target=start_web_dashboard, daemon=True).start()
+
     host = "0.0.0.0"
     port = 8888
 
@@ -118,14 +168,11 @@ def start_server():
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((host, port))
     server.listen(5)
-    print(f"[+] Server listening on {host}:{port}")
 
-    threading.Thread(target=command_sender, daemon=True).start()
+    print(f"[+] Server listening on {host}:{port}")
 
     while True:
         sock, addr = server.accept()
-        print(f"[+] New connection from {addr}")
+        print(f"[+] New client: {addr}")
         threading.Thread(target=handle_client, args=(sock, addr), daemon=True).start()
 
-if __name__ == "__main__":
-    start_server()
