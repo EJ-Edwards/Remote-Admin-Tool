@@ -1,8 +1,6 @@
 import socket
 import subprocess
 
-from server import start_server
-
 def start_client(server_ip, server_port):
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -32,12 +30,3 @@ def start_client(server_ip, server_port):
             break
 
     client.close()
-
-
-if __name__ == "__main__":
-    SERVER_IP = "127.0.0.1"
-    SERVER_PORT = 8888
-    start_client(SERVER_IP, SERVER_PORT)
-
-if __name__ == "__main__":
-    start_server()

