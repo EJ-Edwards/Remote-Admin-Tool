@@ -2,34 +2,32 @@ import socket
 import threading
 import ctypes
 import sys
-import time
 from flask import Flask, request, jsonify
 
-# ---------------------------------------
+# -----------------------------
 # GLOBAL STATE
-# ---------------------------------------
-clients = {}            # (ip,port) -> socket
-client_output = {}      # (ip,port) -> list of lines
+# -----------------------------
+clients = {}            # (ip, port) -> socket
+client_output = {}      # (ip, port) -> list of lines
 PIN = None
 lock = threading.Lock()
 
-# ---------------------------------------
-# FLASK DASHBOARD HTML
-# ---------------------------------------
+# -----------------------------
+# DASHBOARD HTML
+# -----------------------------
 dashboard_html = """
 <!DOCTYPE html>
 <html>
 <head>
 <title>Sentinel Link Dashboard</title>
 <style>
-    body { background:#111; color:#fff; font-family:Arial; padding:20px; }
-    .client-box { background:#222; padding:15px; border-radius:5px; margin-bottom:20px; }
-    textarea { width:100%; height:200px; background:#000; color:#0f0; padding:10px; border-radius:5px; }
-    input { width:75%; padding:8px; }
-    button { padding:8px; cursor:pointer; }
+body { background:#111; color:#fff; font-family:Arial; padding:20px; }
+.client-box { background:#222; padding:15px; border-radius:5px; margin-bottom:20px; }
+textarea { width:100%; height:200px; background:#000; color:#0f0; padding:10px; border-radius:5px; }
+input { width:75%; padding:8px; }
+button { padding:8px; cursor:pointer; }
 </style>
 </head>
-
 <body>
 <h1>Sentinel Link Dashboard</h1>
 <div id="client-list"></div>
@@ -46,9 +44,7 @@ async function loadClients() {
         container.innerHTML += `
             <div class="client-box">
                 <strong>${c}</strong><br><br>
-
                 <textarea id="out-${c.replaceAll(':','-')}" readonly></textarea><br>
-
                 <input id="cmd-${c.replaceAll(':','-')}" placeholder="Enter command">
                 <button onclick="sendCmd('${c}')">Send</button>
             </div>
@@ -56,7 +52,6 @@ async function loadClients() {
     }
 }
 
-// Load output but **prevent forced scrolling**
 async function loadOutputs() {
     const res = await fetch("/api/output");
     const data = await res.json();
@@ -66,22 +61,15 @@ async function loadOutputs() {
         const box = document.getElementById(id);
         if (!box) continue;
 
-        const shouldStick = (
-            box.scrollTop + box.clientHeight >= box.scrollHeight - 10
-        );
-
+        const shouldStick = box.scrollTop + box.clientHeight >= box.scrollHeight - 10;
         box.value = data[addr].join("\\n");
-
-        if (shouldStick) {
-            box.scrollTop = box.scrollHeight;
-        }
+        if (shouldStick) box.scrollTop = box.scrollHeight;
     }
 }
 
 async function sendCmd(addr) {
     const id = "cmd-" + addr.replaceAll(":","-");
     const cmd = document.getElementById(id).value;
-
     await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,16 +80,15 @@ async function sendCmd(addr) {
 setInterval(loadOutputs, 800);
 loadClients();
 </script>
-
 </body>
 </html>
 """
 
 app = Flask(__name__)
 
-# ---------------------------------------
-# ROUTES
-# ---------------------------------------
+# -----------------------------
+# FLASK ROUTES
+# -----------------------------
 @app.route("/")
 def home():
     return dashboard_html
@@ -132,11 +119,11 @@ def api_send():
                     return jsonify({"status": "send_error"})
     return jsonify({"status": "not_found"})
 
-# ---------------------------------------
+# -----------------------------
 # AUTHENTICATION
-# ---------------------------------------
+# -----------------------------
 def authenticate(sock):
-    sock.send(b"AUTH")
+    sock.send(b"AUTH_REQ")
     recv_pin = sock.recv(128).decode().strip()
     if recv_pin != PIN:
         sock.send(b"AUTH_FAIL")
@@ -144,9 +131,9 @@ def authenticate(sock):
     sock.send(b"AUTH_OK")
     return True
 
-# ---------------------------------------
-# CLIENT THREAD
-# ---------------------------------------
+# -----------------------------
+# CLIENT HANDLER
+# -----------------------------
 def handle_client(sock, addr):
     if not authenticate(sock):
         print(f"[!] Auth failed: {addr}")
@@ -164,12 +151,11 @@ def handle_client(sock, addr):
             data = sock.recv(4096)
             if not data:
                 break
-
             text = data.decode(errors="ignore")
 
             with lock:
-                client_output[addr].append(text)
-                client_output[addr] = client_output[addr][-200:]  # keep last 200 lines
+                client_output[addr].append(text.strip())
+                client_output[addr] = client_output[addr][-200:]  # last 200 lines
 
             print(f"[{addr}] {text.strip()}")
         except:
@@ -181,9 +167,9 @@ def handle_client(sock, addr):
         client_output.pop(addr, None)
     sock.close()
 
-# ---------------------------------------
+# -----------------------------
 # SERVER START
-# ---------------------------------------
+# -----------------------------
 def run_dashboard():
     app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
 
