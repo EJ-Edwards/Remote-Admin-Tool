@@ -7,7 +7,6 @@ import subprocess
 def handle_command(command):
     command = command.strip()
     try:
-        # Built-in commands
         if command == "whoami":
             return getpass.getuser()
         elif command == "hostname":

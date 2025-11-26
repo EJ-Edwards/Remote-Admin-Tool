@@ -43,6 +43,7 @@ async function loadClients() {
                 <textarea id="out-${c.replaceAll(':','-')}" readonly></textarea><br>
                 <input id="cmd-${c.replaceAll(':','-')}" placeholder="Enter command">
                 <button onclick="sendCmd('${c}')">Send</button>
+                <button onclick="exportCmd('${c}')">Export</button>
             </div>
         `;
     }
@@ -143,7 +144,7 @@ def handle_client(sock, addr):
 
             with lock:
                 client_output[addr].append(text.strip())
-                client_output[addr] = client_output[addr][-200:]  # last 200 lines
+                client_output[addr] = client_output[addr][-200:]  
 
             print(f"[{addr}] {text.strip()}")
         except:
