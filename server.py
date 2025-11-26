@@ -1,16 +1,22 @@
 import socket
 import threading
-import ctypes
 import sys
-from flask import Flask, request, jsonify
+import io
+import os
+from flask import Flask, request, jsonify, send_file
 
-
-clients = {}            
-client_output = {}      
+clients = {}
+client_output = {}
 PIN = None
 lock = threading.Lock()
 
+# Where exported files will be saved
+EXPORT_DIR = "exports"
+os.makedirs(EXPORT_DIR, exist_ok=True)
 
+# -------------------------
+#  DASHBOARD HTML
+# -------------------------
 dashboard_html = """
 <!DOCTYPE html>
 <html>
@@ -22,6 +28,7 @@ body { background:#111; color:#fff; font-family:Arial; padding:20px; }
 textarea { width:100%; height:200px; background:#000; color:#0f0; padding:10px; border-radius:5px; }
 input { width:75%; padding:8px; }
 button { padding:8px; cursor:pointer; }
+a { color:#4af; }
 </style>
 </head>
 <body>
@@ -43,7 +50,8 @@ async function loadClients() {
                 <textarea id="out-${c.replaceAll(':','-')}" readonly></textarea><br>
                 <input id="cmd-${c.replaceAll(':','-')}" placeholder="Enter command">
                 <button onclick="sendCmd('${c}')">Send</button>
-                <button onclick="exportCmd('${c}')">Export</button>
+                <button onclick="exportFile('${c}')">Export File</button>
+                <div id="download-${c.replaceAll(':','-')}"></div>
             </div>
         `;
     }
@@ -54,7 +62,7 @@ async function loadOutputs() {
     const data = await res.json();
 
     for (let addr in data) {
-        const id = "out-" + addr.replaceAll(":","-");
+        const id = "out-" + addr.replaceAll(":", "-");
         const box = document.getElementById(id);
         if (!box) continue;
 
@@ -65,8 +73,9 @@ async function loadOutputs() {
 }
 
 async function sendCmd(addr) {
-    const id = "cmd-" + addr.replaceAll(":","-");
+    const id = "cmd-" + addr.replaceAll(":", "-");
     const cmd = document.getElementById(id).value;
+
     await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -74,14 +83,36 @@ async function sendCmd(addr) {
     });
 }
 
+function exportFile(addr) {
+    const path = prompt("Enter file or folder path to export:");
+    if (!path) return;
+
+    fetch("/api/send", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            addr,
+            command: "FILE_REQ " + path
+        })
+    });
+
+    alert("File request sent. When the client sends it, a download link will appear.");
+}
+
 setInterval(loadOutputs, 800);
 loadClients();
 </script>
+
 </body>
 </html>
 """
 
+# -------------------------
+#  FLASK ROUTES
+# -------------------------
+
 app = Flask(__name__)
+
 @app.route("/")
 def home():
     return dashboard_html
@@ -113,6 +144,18 @@ def api_send():
     return jsonify({"status": "not_found"})
 
 
+@app.route("/download/<filename>")
+def download(filename):
+    path = os.path.join(EXPORT_DIR, filename)
+    if not os.path.exists(path):
+        return "File not found", 404
+    return send_file(path, as_attachment=True)
+
+
+# -------------------------
+#  AUTHENTICATION
+# -------------------------
+
 def authenticate(sock):
     sock.send(b"AUTH_REQ")
     recv_pin = sock.recv(128).decode().strip()
@@ -122,6 +165,10 @@ def authenticate(sock):
     sock.send(b"AUTH_OK")
     return True
 
+
+# -------------------------
+#  HANDLE CLIENT
+# -------------------------
 
 def handle_client(sock, addr):
     if not authenticate(sock):
@@ -135,19 +182,61 @@ def handle_client(sock, addr):
         clients[addr] = sock
         client_output[addr] = []
 
+    buffer = b""
+
     while True:
         try:
             data = sock.recv(4096)
             if not data:
                 break
-            text = data.decode(errors="ignore")
+
+            buffer += data
+
+            # ----------- FILE TRANSFER BEGIN ----------
+            if b"FILE_BEGIN:" in buffer:
+                header_end = buffer.find(b"\n")
+                header = buffer[:header_end].decode()
+
+                _, path, size = header.split(":")
+                size = int(size)
+
+                remaining = buffer[header_end+1:]
+
+                # not enough data yet
+                if len(remaining) < size:
+                    continue
+
+                file_bytes = remaining[:size]
+                buffer = remaining[size:]  # trim used data
+
+                safe_name = path.replace("\\", "_").replace("/", "_")
+                filename = f"{addr[0]}_{addr[1]}_{safe_name}"
+                save_path = os.path.join(EXPORT_DIR, filename)
+
+                with open(save_path, "wb") as f:
+                    f.write(file_bytes)
+
+                print(f"[+] File saved: {save_path}")
+
+                # append download link to output
+                with lock:
+                    client_output[addr].append(f"[FILE SAVED] Download: /download/{filename}")
+
+                continue
+            # ----------- FILE TRANSFER END ----------
+
+            # Normal text output
+            text = buffer.decode(errors="ignore")
+            buffer = b""
 
             with lock:
                 client_output[addr].append(text.strip())
-                client_output[addr] = client_output[addr][-200:]  
+                client_output[addr] = client_output[addr][-200:]
 
             print(f"[{addr}] {text.strip()}")
-        except:
+
+        except Exception as e:
+            print("Error:", e)
             break
 
     print(f"[-] Client disconnected: {addr}")
@@ -156,6 +245,10 @@ def handle_client(sock, addr):
         client_output.pop(addr, None)
     sock.close()
 
+
+# -------------------------
+#  SERVER START
+# -------------------------
 
 def run_dashboard():
     app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
@@ -166,8 +259,8 @@ def start_server(pin, port):
 
     threading.Thread(target=run_dashboard, daemon=True).start()
 
-    print(f"\n[+] Sentinel Link Server Running")
-    print(f"[+] Dashboard: http://localhost:5000")
+    print("\n[+] Sentinel Link Server Running")
+    print("[+] Dashboard: http://localhost:5000")
     print(f"[+] Listening on port {port}")
     print(f"[+] PIN = {PIN}\n")
 
