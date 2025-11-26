@@ -4,17 +4,13 @@ import ctypes
 import sys
 from flask import Flask, request, jsonify
 
-# -----------------------------
-# GLOBAL STATE
-# -----------------------------
-clients = {}            # (ip, port) -> socket
-client_output = {}      # (ip, port) -> list of lines
+
+clients = {}            
+client_output = {}      
 PIN = None
 lock = threading.Lock()
 
-# -----------------------------
-# DASHBOARD HTML
-# -----------------------------
+
 dashboard_html = """
 <!DOCTYPE html>
 <html>
@@ -85,10 +81,6 @@ loadClients();
 """
 
 app = Flask(__name__)
-
-# -----------------------------
-# FLASK ROUTES
-# -----------------------------
 @app.route("/")
 def home():
     return dashboard_html
@@ -119,9 +111,7 @@ def api_send():
                     return jsonify({"status": "send_error"})
     return jsonify({"status": "not_found"})
 
-# -----------------------------
-# AUTHENTICATION
-# -----------------------------
+
 def authenticate(sock):
     sock.send(b"AUTH_REQ")
     recv_pin = sock.recv(128).decode().strip()
@@ -131,9 +121,7 @@ def authenticate(sock):
     sock.send(b"AUTH_OK")
     return True
 
-# -----------------------------
-# CLIENT HANDLER
-# -----------------------------
+
 def handle_client(sock, addr):
     if not authenticate(sock):
         print(f"[!] Auth failed: {addr}")
@@ -167,9 +155,7 @@ def handle_client(sock, addr):
         client_output.pop(addr, None)
     sock.close()
 
-# -----------------------------
-# SERVER START
-# -----------------------------
+
 def run_dashboard():
     app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
 
