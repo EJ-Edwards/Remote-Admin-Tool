@@ -1,19 +1,3 @@
-#!/usr/bin/env python3
-"""
-Transparent Remote Client (client.py)
-
-- Connects to a controlling server.
-- Performs commands received from server and returns textual output.
-- Responds to "FILE_REQ <path>" by sending an exact copy of the file (or a zipped folder).
-  The file transfer format: a single-line header:
-      FILE_BEGIN:<original_path>:<size>\n
-  followed immediately by exactly <size> bytes of file content.
-
-USAGE WARNING:
-This client must be run only on machines where the user has given explicit consent.
-Do NOT deploy this to machines without informed consent — doing so is illegal and unethical.
-"""
-
 import socket
 import os
 import platform

@@ -3,8 +3,6 @@
 A secure, authenticated remote administration system built with **Python**, **Sockets**, and a **Flask-based web dashboard**.  
 Designed for **educational, security research, and authorized device management**.
 
-> ⚠️ **This project allows remote viewing of system information, file content, and command execution only. It does NOT include remote desktop or input control.**
-
 ---
 
 ## 🚀 Features
@@ -34,5 +32,12 @@ Designed for **educational, security research, and authorized device management*
 - **Customizable PIN & Port**  
   Easily secure your server on launch  
 
----
+- **Exporting feature** 
+  - For right now you are only able to export single files
+  - You can find the exported files in the Remote-Admin-Tool when you git clone it
+  - You should see a folder called exports and when you click on it you should see what you requested exported 
 
+## ⚠️ Legal Notice
+- Sentinel Link is designed for educational, security research, and authorized device management purposes only.
+- Do NOT deploy this software on computers or networks without explicit consent. Unauthorized access to devices or systems is illegal and punishable under law.
+- By using this software, you agree to comply with all applicable laws and regulations. The authors are not responsible for misuse.
