@@ -46,5 +46,7 @@ Designed for **educational, security research, and authorized device management*
 
 ## Demo 
 <img width="989" height="561" alt="Demopic Sentinel Link" src="https://github.com/user-attachments/assets/52ab3f26-028f-41f3-9fd8-b75f9ef2bb78" />
+<img width="1878" height="911" alt="Demopic Link" src="https://github.com/user-attachments/assets/5e54bd4c-f6b3-40be-88fb-6083ab1d403d" />
+
 
 
