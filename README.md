@@ -33,7 +33,7 @@ Designed for **educational, security research, and authorized device management*
   Easily secure your server on launch  
 
 - **Exporting feature** 
-  - For right now you are only able to export single files
+  - For right now you are only able to export small single files
   - You can find the exported files in the Remote-Admin-Tool when you git clone it
   - You should see a folder called exports and when you click on it you should see what you requested exported 
 
