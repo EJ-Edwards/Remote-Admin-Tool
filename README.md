@@ -59,5 +59,12 @@ We welcome contributions from the community to improve Sentinel Link and expand 
 - 🌍 Cross-Platform Testing: Help validate and refine client behavior across different operating systems.
 - 📖 Documentation & Tutorials: Improve c
 
+## Motivation
+Sentinel Link was built to demonstrate how secure, authenticated remote administration can be achieved with lightweight tools like Python sockets and a Flask dashboard. The motivation is both **educational**—helping developers and researchers learn the fundamentals of client-server communication, authentication, and system management—and **practical**, providing a safe environment for experimenting with remote device control without relying on heavy enterprise solutions.
 
+## Quick Start
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/sentinel-link.git
+   cd sentinel-link
 
