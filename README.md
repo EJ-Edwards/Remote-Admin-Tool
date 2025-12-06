@@ -68,3 +68,32 @@ Sentinel Link was built to demonstrate how secure, authenticated remote administ
    git clone https://github.com/your-username/sentinel-link.git
    cd sentinel-link
 
+   ## Usage
+- Start the server with your chosen PIN and port:
+  ```bash
+  python server.py --pin 1234 --port 5000
+
+  Contributing
+Contributions are encouraged to help expand Sentinel Link’s functionality and strengthen its security. The project is motivated by two goals:
+- Educational: to teach developers and researchers about secure client-server communication and remote administration.
+- Practical: to provide a safe environment for experimenting with authenticated device management.
+Ways to contribute:
+- 🔧 Add new commands or improve exporting features
+- 🛡️ Enhance authentication, encryption, and logging
+- 🌍 Test across different operating systems and report bugs
+- 📖 Improve documentation, tutorials, or create example use cases
+To get started:
+- Fork the repository
+- Create a feature branch (git checkout -b feature-name)
+- Commit your changes (git commit -m 'Add new feature')
+- Push to your branch (git push origin feature-name)
+- Open a Pull Request
+Your contributions support the mission of making secure remote administration accessible for learning and research.
+
+This keeps the README professional, shows how to use the tool step by step, and motivates contributors by tying their work to the project’s educational and practical goals.  
+
+Would you like me to also draft a **Roadmap** section so contributors see the next big features (like multi-file export, encryption, or role-based access)?
+
+
+
+
