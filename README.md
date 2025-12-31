@@ -41,6 +41,7 @@ Designed for **educational, security research, and authorized device management*
 - Sentinel Link is designed for educational, security research, and authorized device management purposes only.
 - Do NOT deploy this software on computers or networks without explicit consent. Unauthorized access to devices or systems is illegal and punishable under law.
 - By using this software, you agree to comply with all applicable laws and regulations. The author are not responsible for misuse.
+- You also agree that by using this software you will not take the code and modify it for you're own illegal activity.
 
 
 
