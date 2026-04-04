@@ -9,6 +9,7 @@ Designed for **educational, security research, and authorized device management*
 
 - **Secure PIN Authentication**  
   Custom PIN handshake between server ↔ client.
+  Auto-PIN For Client.
 
 - **Web Dashboard (Flask UI)**  
   - List connected clients  
