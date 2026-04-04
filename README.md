@@ -8,8 +8,8 @@ Designed for **educational, security research, and authorized device management*
 ## 🚀 Features
 
 - **Secure PIN Authentication**  
-  Custom PIN handshake between server ↔ client.
-  Auto-PIN For Client.
+ -  Custom PIN handshake between server ↔ client.
+  - Auto-PIN Added For The Client.
 
 - **Web Dashboard (Flask UI)**  
   - List connected clients  
