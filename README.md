@@ -1,57 +1,48 @@
-# Sentinel Link — Remote Device Management System
+# Sentinel Link
 
-A secure, authenticated remote administration system built with **Python**, **Sockets**, and a **Flask-based web dashboard**.  
-Designed for **educational, security research, and authorized device management**.
+Internal audit and access monitoring for SaaS teams, agencies, MSPs, and dev shops.
 
----
+**Know who accessed what, who downloaded sensitive files, and what activity needs review.**
 
-## 🚀 Features
+Sentinel Link is **not** a remote admin tool. It collects **safe audit metadata only** via an outbound HTTPS agent and a cloud dashboard.
 
-- **Secure PIN Authentication**  
- -  Custom PIN handshake between server ↔ client.
-  - Auto-PIN Added For The Client.
+## Repository structure
 
-- **Web Dashboard (Flask UI)**  
-  - List connected clients  
-  - View live output/logs per client  
-  - Send commands and receive output  
+| Path | Description |
+|------|-------------|
+| [`internal agent/`](internal%20agent/) | Python CLI agent (Typer + Rich) |
+| [`cloud-dashboard/`](cloud-dashboard/) | FastAPI backend + React dashboard |
+| [`SENTINEL_LINK_REFACTOR_PLAN.md`](SENTINEL_LINK_REFACTOR_PLAN.md) | Architecture and migration notes |
 
-- **Cross-Platform Client**  
-  Works on Windows, Linux, macOS  
+## Quick start
 
-- **System Management Commands**  
-  - `sysinfo` — OS and processor info  
-  - `hostname` — Computer name  
-  - `whoami` — Current user  
-  - `ls` / `dir` — List files and folders  
-  - `pwd` — Current directory  
-  - `read_file` — View file content  
-  - `disk_usage` — Show storage usage  
-  - `list_processes` — Running processes  
-  - `uptime` — System uptime  
+### 1. Cloud dashboard
 
-- **Customizable PIN & Port**  
-  Easily secure your server on launch  
+```bash
+cd cloud-dashboard
+docker compose up --build
+```
 
-- **Exporting feature** 
-  - For right now you are only able to export small single files
-  - You can find the exported files in the Remote-Admin-Tool when you git clone it
-  - You should see a folder called exports and when you click on it you should see what you requested exported 
+- API: http://localhost:8000  
+- UI: http://localhost:5173  
 
-## ⚠️ Legal Notice
-- Sentinel Link is designed for educational, security research, and authorized device management purposes only.
-- Do NOT deploy this software on computers or networks without explicit consent. Unauthorized access to devices or systems is illegal and punishable under law.
-- By using this software, you agree to comply with all applicable laws and regulations. The author are not responsible for misuse.
-- You also agree that by using this software you will not take the code and modify it for you're own illegal activity.
+Sign up, then generate an **enrollment token** under **Agents**.
 
+### 2. Internal agent
 
+```bash
+cd "internal agent"
+pip install -e .
+sentinel-link setup
+sentinel-link start
+```
 
-## Demo 
-<img width="989" height="561" alt="Demopic Sentinel Link" src="https://github.com/user-attachments/assets/52ab3f26-028f-41f3-9fd8-b75f9ef2bb78" />
-<img width="1878" height="911" alt="Demopic Link" src="https://github.com/user-attachments/assets/5e54bd4c-f6b3-40be-88fb-6083ab1d403d" />
+Events from your application can be submitted via `collectors.access_events.ingest_metadata_event()`.
 
+## Legal notice
 
+Deploy only on systems you are authorized to monitor. Unauthorized access is prohibited. You are responsible for compliance with applicable laws.
 
-
+## License
 
-
+See [LICENSE](LICENSE).
