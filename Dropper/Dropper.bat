@@ -1,5 +1,5 @@
 @echo off
-:: Changes the Color to a green type color
+:: Changes the Color to a blue type color
 color 0B
 :: Asks basic questions for the dropper
 echo file name? [Add the file type at the end of the name e.g. .bat, .exe, .py, .ps1, .txt]
