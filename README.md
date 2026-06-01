@@ -1,4 +1,4 @@
-# Sentinel Link — Remote Device Management System
+# Sentinel Link Remote Device Management System
 
 A secure, authenticated remote administration system built with **Python**, **Sockets**, and a **Flask-based web dashboard**.  
 Designed for **educational, security research, and authorized device management**.
