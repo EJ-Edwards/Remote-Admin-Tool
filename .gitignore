@@ -1,12 +1,4 @@
-.venv/
-__pycache__/
+.venv
+__pycache__/client.cpython-313.pyc
 *.pyc
-.env
-*.db
-exports/
-internal agent/.sentinel-link/
-node_modules/
-dist/
-cloud-dashboard/backend/storage/
-cloud-dashboard/frontend/dist/
-.DS_Store
+exports
