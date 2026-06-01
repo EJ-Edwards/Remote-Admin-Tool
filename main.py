@@ -30,10 +30,11 @@ def main_menu():
     print("\nSelect mode:")
     print("1) Server")
     print("2) Client")
+    print("3) Dropper")
     while True:
         choice = input("Choice: ").strip()
-        if choice in ("1","2"): return int(choice)
-        print("Enter 1 or 2.")
+        if choice in ("1","2","3"): return int(choice)
+        print("Enter 1, 2, or 3.")
 
 def main():
     if not accept_terms():
