@@ -8,7 +8,7 @@ read -p "do you want a legitimate looking registry key name? (Y/N) >> " rege
 os_name=Linux
 if [[ $rege =~ ^[Yy]$ ]]; then
     reges="${os_name}"
-    echo "Registry key name = ${os_name}"
+    echo "Registry key name = ${os_name}SecureBoot"
 else
     reges="$name1"
     echo "Registry key name = $name1"
