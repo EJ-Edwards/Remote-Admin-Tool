@@ -1,74 +1,114 @@
-import socket
+import hashlib
+import hmac
+import logging
 import os
 import platform
 import getpass
+import socket
+import ssl
 import subprocess
 import tempfile
-import zipfile
 import threading
 import time
-from typing import Tuple
-# File transfer sizes adjust if needed!! default is 10GB which is plenty but if you want more adjust it
-MAX_TRANSFER_SIZE = 10000 * 1024 * 1024
+import zipfile
+from typing import Optional, Tuple
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+MAX_TRANSFER_SIZE = 100 * 1024 * 1024
 CHUNK_SIZE = 64 * 1024
-# Command handling - add more commands as needed
+
+ALLOWED_COMMANDS = frozenset({
+    "whoami",
+    "hostname",
+    "sysinfo",
+    "list_processes",
+    "ls",
+    "dir",
+    "pwd",
+    "uptime",
+})
+
+
+def _safe_path(path: str) -> Optional[str]:
+    """Restrict file ops to the current working directory tree."""
+    if not path or not path.strip():
+        return None
+    try:
+        base = os.path.realpath(os.getcwd())
+        resolved = os.path.realpath(os.path.abspath(path.strip()))
+        if resolved == base or resolved.startswith(base + os.sep):
+            return resolved
+    except OSError as e:
+        logger.warning("Path resolution failed: %s", e)
+    return None
+
+
 def handle_command(command: str) -> str:
     command = command.strip()
+    if not command:
+        return "Error: empty command"
+
     try:
         if command == "whoami":
             return getpass.getuser()
-        elif command == "hostname":
+        if command == "hostname":
             return platform.node()
-        elif command == "sysinfo":
+        if command == "sysinfo":
             return f"OS: {platform.system()} {platform.release()}\nProcessor: {platform.processor()}"
-        elif command == "list_processes":
+        if command == "list_processes":
             return subprocess.getoutput("tasklist" if os.name == "nt" else "ps -e")
-        elif command in ["ls", "dir"]:
+        if command in ("ls", "dir"):
             return "\n".join(os.listdir(os.getcwd()))
-        elif command == "pwd":
+        if command == "pwd":
             return os.getcwd()
-        elif command.startswith("cd "):
+        if command.startswith("cd "):
             path = command[3:].strip()
-            try:
-                os.chdir(path)
-                return f"Changed directory to {os.getcwd()}"
-            except Exception as e:
-                return f"Error changing directory: {e}"
-        elif command.startswith("read_file "):
+            safe = _safe_path(path)
+            if not safe or not os.path.isdir(safe):
+                return "Error: invalid or inaccessible directory"
+            os.chdir(safe)
+            return f"Changed directory to {os.getcwd()}"
+        if command.startswith("read_file "):
             path = command[10:].strip()
-            try:
-                with open(path, "r", errors="ignore") as f:
-                    return f.read()
-            except Exception as e:
-                return f"Error reading file: {e}"
-        elif command.startswith("write_file "):
+            safe = _safe_path(path)
+            if not safe or not os.path.isfile(safe):
+                return "Error: invalid or inaccessible file"
+            with open(safe, "r", errors="ignore") as f:
+                return f.read()
+        if command.startswith("write_file "):
             try:
                 _, path, content = command.split(" ", 2)
-                with open(path, "w") as f:
-                    f.write(content)
-                return f"Wrote to {path}"
-            except Exception as e:
-                return f"Error writing file: {e}"
-        elif command.startswith("delete_file "):
+            except ValueError:
+                return "Error: usage write_file <path> <content>"
+            safe = _safe_path(path)
+            if not safe:
+                return "Error: write denied — path must stay under working directory"
+            with open(safe, "w", encoding="utf-8") as f:
+                f.write(content)
+            return f"Wrote to {safe}"
+        if command.startswith("delete_file "):
             path = command[12:].strip()
-            try:
-                os.remove(path)
-                return f"Deleted {path}"
-            except Exception as e:
-                return f"Error deleting file: {e}"
-        elif command.startswith("mkdir "):
-            try:
-                path = command[6:].strip()
-                os.mkdir(path)
-                return f"Created folder: {path}"
-            except Exception as e:
-                return f"Error creating folder: {e}"
-        elif command == "uptime":
+            safe = _safe_path(path)
+            if not safe or not os.path.isfile(safe):
+                return "Error: delete denied — invalid path"
+            os.remove(safe)
+            return f"Deleted {safe}"
+        if command.startswith("mkdir "):
+            path = command[6:].strip()
+            safe = _safe_path(path)
+            if not safe:
+                return "Error: mkdir denied — path must stay under working directory"
+            os.mkdir(safe)
+            return f"Created folder: {safe}"
+        if command == "uptime":
             return subprocess.getoutput("net stats workstation" if os.name == "nt" else "uptime -p")
-        else:
-            return subprocess.getoutput(command)
+        return f"Error: unknown command '{command.split()[0]}'. Allowed: {', '.join(sorted(ALLOWED_COMMANDS))}"
     except Exception as e:
+        logger.exception("Command failed: %s", command)
         return f"Error: {e}"
+
 
 def _zip_folder_to_temp(folder_path: str) -> str:
     temp_fd, temp_path = tempfile.mkstemp(suffix=".zip")
@@ -81,19 +121,23 @@ def _zip_folder_to_temp(folder_path: str) -> str:
                 zf.write(full, arcname)
     return temp_path
 
+
 def _file_size_ok(path: str) -> Tuple[bool, int]:
     try:
         size = os.path.getsize(path)
         return (size <= MAX_TRANSFER_SIZE, size)
-    except Exception:
+    except OSError as e:
+        logger.warning("Could not stat file %s: %s", path, e)
         return (False, 0)
+
 
 def send_file_bytes(sock: socket.socket, original_path: str, file_path_on_disk: str) -> bool:
     is_ok, size = _file_size_ok(file_path_on_disk)
     if not is_ok:
         try:
             sock.sendall(f"FILE_ERROR:size_exceeded:{original_path}\n".encode())
-        except: pass
+        except OSError as e:
+            logger.warning("Failed to send size error: %s", e)
         return False
     header = f"FILE_BEGIN:{original_path}:{size}\n"
     try:
@@ -101,75 +145,109 @@ def send_file_bytes(sock: socket.socket, original_path: str, file_path_on_disk: 
         with open(file_path_on_disk, "rb") as f:
             while True:
                 chunk = f.read(CHUNK_SIZE)
-                if not chunk: break
+                if not chunk:
+                    break
                 sock.sendall(chunk)
         return True
-    except Exception as e:
+    except OSError as e:
+        logger.warning("File send failed: %s", e)
         try:
             sock.sendall(f"FILE_ERROR:send_failed:{original_path}:{e}\n".encode())
-        except: pass
+        except OSError:
+            pass
         return False
+
 
 def handle_file_request(sock: socket.socket, path: str):
     path = path.strip()
     if not path:
         sock.sendall(b"FILE_ERROR:empty_path\n")
         return
-    if os.path.isfile(path):
-        if send_file_bytes(sock, path, path):
-            sock.sendall(f"FILE_STATUS:sent:{path}\n".encode())
-    elif os.path.isdir(path):
+    safe = _safe_path(path)
+    if not safe:
+        sock.sendall(f"FILE_ERROR:access_denied:{path}\n".encode())
+        return
+    if os.path.isfile(safe):
+        if send_file_bytes(sock, safe, safe):
+            sock.sendall(f"FILE_STATUS:sent:{safe}\n".encode())
+    elif os.path.isdir(safe):
+        zip_path = None
         try:
-            zip_path = _zip_folder_to_temp(path)
-            if send_file_bytes(sock, zip_path, zip_path):
-                sock.sendall(f"FILE_STATUS:sent_zip:{path}\n".encode())
-            if os.path.exists(zip_path):
+            zip_path = _zip_folder_to_temp(safe)
+            if send_file_bytes(sock, safe, zip_path):
+                sock.sendall(f"FILE_STATUS:sent_zip:{safe}\n".encode())
+        except OSError as e:
+            sock.sendall(f"FILE_ERROR:zip_failed:{safe}:{e}\n".encode())
+        finally:
+            if zip_path and os.path.exists(zip_path):
                 os.remove(zip_path)
-        except Exception as e:
-            sock.sendall(f"FILE_ERROR:zip_failed:{path}:{e}\n".encode())
     else:
         sock.sendall(f"FILE_ERROR:not_found:{path}\n".encode())
 
-def start_client(server_ip: str, server_port: int, auth_pin: str):
+
+def _authenticate(client: socket.socket, auth_pin: str, msg: str) -> bool:
+    if not msg.startswith("AUTH_REQ:"):
+        logger.warning("Unexpected auth message: %s", msg[:32])
+        return False
+    nonce_hex = msg.split(":", 1)[1].strip()
+    nonce = bytes.fromhex(nonce_hex)
+    digest = hmac.new(auth_pin.encode(), nonce, hashlib.sha256).hexdigest()
+    client.send(digest.encode())
+    auth_reply = client.recv(1024).decode(errors="ignore").strip()
+    return auth_reply == "AUTH_OK"
+
+
+def start_client(
+    server_ip: str,
+    server_port: int,
+    auth_pin: str,
+    use_tls: bool = False,
+):
     while True:
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # i set the client.settimeout(7) in the connection phase. This is important because if a server is behind a firewall that "drops" packets instead of "rejecting" them, the script could hang for minutes without this limit.
         client.settimeout(7)
         try:
             client.connect((server_ip, server_port))
+            if use_tls:
+                ctx = ssl.create_default_context()
+                client = ctx.wrap_socket(client, server_hostname=server_ip)
             client.settimeout(None)
-            print(f"[*] Connected to {server_ip}")
-            msg = client.recv(1024).decode()
-            if msg == "AUTH_REQ":
-                client.send(auth_pin.encode())
-                auth_reply = client.recv(1024).decode()
-                if auth_reply != "AUTH_OK":
-                    print(f"[!] Auth failed on {server_ip}")
-                    return
-                print(f"[+] Authenticated on {server_ip}")
+            logger.info("Connected to %s", server_ip)
+            msg = client.recv(1024).decode(errors="ignore").strip()
+            if not _authenticate(client, auth_pin, msg):
+                logger.warning("Auth failed on %s", server_ip)
+                return
+            logger.info("Authenticated on %s", server_ip)
             while True:
                 data = client.recv(4096)
-                if not data: break
+                if not data:
+                    break
                 text = data.decode(errors="ignore")
                 for line in text.splitlines():
                     cmd = line.strip()
+                    if not cmd:
+                        continue
                     if cmd.startswith("FILE_REQ "):
                         handle_file_request(client, cmd[9:])
                     else:
                         output = handle_command(cmd)
                         client.sendall((output + "\n").encode(errors="ignore"))
-        except (socket.timeout, ConnectionRefusedError, OSError):
-            print(f"[!] Unconnectable to {server_ip}")
+        except (socket.timeout, ConnectionRefusedError, OSError) as e:
+            logger.warning("Unconnectable to %s: %s", server_ip, e)
             time.sleep(20)
         except Exception as e:
-            print(f"[!] {server_ip} error: {e}")
+            logger.exception("%s error: %s", server_ip, e)
             break
         finally:
-            client.close()
-# Auto server connection, add as many servers as you want.
+            try:
+                client.close()
+            except OSError as e:
+                logger.debug("Error closing client socket: %s", e)
+
+
 if __name__ == "__main__":
     SERVERS = ["SERVER1", "SERVER2"]
-    PORT = "PORT"
+    PORT = 9000
     PIN = "PIN"
     threads = []
     for ip in SERVERS:
